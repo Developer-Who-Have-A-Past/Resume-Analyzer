@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+<style id="paperCss"></style>
+</head>
+<body>
+<header class="top">
+  <div class="logo"><span class="mark">R</span>Resume Lab</div>
+  <label class="sr" for="tpl" style="position:absolute;left:-9999px">Template</label>
+  <select id="tpl" class="btn" title="Template">
+    <option value="classic">Classic</option>
+    <option value="modern">Modern</option>
+    <option value="compact">Compact</option>
+  </select>
+  <button class="btn" id="bUndo" disabled>Undo</button>
+  <button class="btn" id="bKey">AI settings</button>
+  <button class="btn" id="bImport">Import</button>
+  <button class="btn primary" id="bExport">Export</button>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Workspace">
+  <button role="tab" aria-selected="true" data-v="edit">Edit</button>
+  <button role="tab" aria-selected="false" data-v="prev">Preview</button>
+  <button role="tab" aria-selected="false" data-v="an">Analyse</button>
+</nav>
+
+<main class="ws" id="ws" data-view="edit">
+  <section class="pane pane-edit" aria-label="Editor">
+    <div class="ph">
+      <div class="seg" role="group" aria-label="Editor tab">
+        <button id="tabRes" aria-pressed="true">Resume</button>
+        <button id="tabJd" aria-pressed="false">Job description</button>
+      </div>
+      <label class="chk sp"><input type="checkbox" id="wrapChk"> Wrap lines</label>
+    </div>
+    <div class="ed" id="edRes"><div class="gut" id="gut" aria-hidden="true"></div><textarea id="src" spellcheck="false" wrap="off" aria-label="Resume source"></textarea></div>
+    <div class="ed wrap" id="edJd" hidden><textarea id="jd" spellcheck="false" aria-label="Job description" placeholder="Paste the full job description here."></textarea></div>
+    <div class="edfoot"><span id="stat"></span><span id="saved">Saved in this browser</span><button class="link" id="bClearJd" hidden>Clear job description</button></div>
+    <details class="guide">
+      <summary>Markup guide</summary>
+      <ul>
+        <li><code># Name</code> then one line of contact details split with <code>|</code></li>
+        <li><code>## Section</code> starts a section (Summary, Education, Skills, Experience, Projects)</li>
+        <li><code>### Title | Detail | Date</code> starts an entry; the last part sits on the right</li>
+        <li><code>- text</code> is a bullet; <code>Label: a, b</code> is a skills line; <code>**bold**</code> works anywhere</li>
+      </ul>
+    </details>
+  </section>
+
+  <section class="pane pane-prev" aria-label="Preview">
+    <div class="ph">
+      <div class="seg" role="group" aria-label="Preview mode">
+        <button id="vPrev" aria-pressed="true">Preview</button>
+        <button id="vTex" aria-pressed="false">LaTeX</button>
+      </div>
+      <span class="chipinfo sp" id="pages">1 page</span>
+    </div>
+    <div class="scroll" id="scroll"><div class="sheetbox" id="sheetbox"><div class="paper classic" id="paper"><div id="paperBody"></div><div id="pbks"></div></div></div></div>
+    <pre class="texview" id="tex" hidden></pre>
+  </section>
+
+  <section class="pane pane-an" aria-label="Analyser">
+    <div class="ph"><strong>Resume analyser</strong><span class="chipinfo sp" id="jdState">No job description</span></div>
+    <div class="an" id="an">
+      <div id="local"></div>
+      <div>
+        <h3>AI review and tailoring</h3>
+        <div class="aibox" id="aiCtl">
+          <p>Claude reads your resume (and the job description if you added one) and proposes line-by-line edits. You accept each change before it touches your resume.</p>
+          <div class="row">
+            <button class="btn primary" id="bReview">Review my resume</button>
+            <button class="btn" id="bTailor">Tailor to job description</button>
+          </div>
+        </div>
+        <div id="aiOut" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="mImport" role="dialog" aria-modal="true" aria-labelledby="impT">
+  <div class="card">
+    <div class="hd"><h2 id="impT">Import a resume</h2><button class="btn sm" data-close>Close</button></div>
+    <p class="hint">Paste the text of your current resume (copy it from a PDF or Word file), or load a .txt, .md or .tex file. Claude turns it into editable markup without adding anything new.</p>
+    <textarea id="impText" placeholder="Paste your resume text here" aria-label="Resume text to import"></textarea>
+    <div class="row">
+      <input type="file" id="impFile" accept=".txt,.md,.tex,text/plain" aria-label="Load a text file">
+    </div>
+    <div class="row">
+      <button class="btn primary" id="impAI">Convert with AI</button>
+      <button class="btn" id="impRaw">Use text as it is</button>
+    </div>
+    <div id="impMsg" class="hint"></div>
+  </div>
+</div>
+
+<div class="modal" id="mExport" role="dialog" aria-modal="true" aria-labelledby="expT">
+  <div class="card">
+    <div class="hd"><h2 id="expT">Export</h2><button class="btn sm" data-close>Close</button></div>
+    <div class="grid2">
+      <button class="btn primary" id="xPdf">Download PDF</button>
+      <button class="btn" id="xHtml">Download HTML</button>
+      <button class="btn" id="xTex">Download LaTeX (.txt)</button>
+      <button class="btn" id="xMd">Download source (.md)</button>
+    </div>
+    <div class="row"><button class="btn" id="xCopy">Copy LaTeX</button></div>
+    <p class="hint">The PDF holds real text, so applicant tracking systems can read it. To compile the LaTeX on Overleaf, create a blank project, paste the copied code into main.tex and press Recompile.</p>
+    <div id="xMsg" class="hint"></div>
+  </div>
+</div>
+<div class="modal" id="mKey" role="dialog" aria-modal="true" aria-labelledby="keyT">
+  <div class="card">
+    <div class="hd"><h2 id="keyT">AI settings</h2><button class="btn sm" data-close>Close</button></div>
+    <p class="hint">AI review, tailoring and import use the Anthropic API with your own key. The key is stored only in this browser and requests go straight from your browser to Anthropic. Use a key with a spend limit, and do not save it on a shared computer.</p>
+    <label for="keyIn" class="hint">Anthropic API key</label>
+    <input id="keyIn" type="password" autocomplete="off" class="btn" style="width:100%;font-family:var(--mono)" placeholder="sk-ant-...">
+    <label for="modelIn" class="hint">Model</label>
+    <input id="modelIn" type="text" class="btn" style="width:100%;font-family:var(--mono)" value="claude-sonnet-5-5">
+    <div class="row"><button class="btn primary" id="keySave">Save</button><button class="btn" id="keyDel">Remove key</button></div>
+    <div id="keyMsg" class="hint"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
